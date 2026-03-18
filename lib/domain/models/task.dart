@@ -6,6 +6,7 @@ class Task {
   final bool isCompleted;
   final String category;
   final DateTime createdAt;
+  final List<String> attachmentUrls;
 
   const Task({
     required this.id,
@@ -15,6 +16,7 @@ class Task {
     required this.isCompleted,
     required this.category,
     required this.createdAt,
+    this.attachmentUrls = const [],
   });
 
   Task copyWith({
@@ -25,6 +27,7 @@ class Task {
     bool? isCompleted,
     String? category,
     DateTime? createdAt,
+    List<String>? attachmentUrls,
   }) {
     return Task(
       id: id ?? this.id,
@@ -34,6 +37,7 @@ class Task {
       isCompleted: isCompleted ?? this.isCompleted,
       category: category ?? this.category,
       createdAt: createdAt ?? this.createdAt,
+      attachmentUrls: attachmentUrls ?? this.attachmentUrls,
     );
   }
 }

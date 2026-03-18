@@ -10,11 +10,28 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Supabase
   supabase_flutter: ^2.5.0
+
+  # Environment
   flutter_dotenv: ^5.1.0
+
+  # Fonts
   google_fonts: ^6.2.1
+
+  # UUID generation for new tasks
   uuid: ^4.4.0
+
+  # Local storage for Notes feature
   shared_preferences: ^2.2.3
+
+  # File picking — images from gallery/camera + generic files
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+
+  # MIME type detection for Storage upload
+  mime: ^1.0.5
+
   cupertino_icons: ^1.0.6
 
 dev_dependencies:

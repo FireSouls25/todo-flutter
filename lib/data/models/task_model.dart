@@ -8,6 +8,7 @@ class TaskModel {
   final bool isCompleted;
   final String category;
   final DateTime createdAt;
+  final List<String> attachmentUrls;
 
   const TaskModel({
     required this.id,
@@ -17,9 +18,16 @@ class TaskModel {
     required this.isCompleted,
     required this.category,
     required this.createdAt,
+    this.attachmentUrls = const [],
   });
 
   factory TaskModel.fromMap(Map<String, dynamic> map) {
+    // attachment_urls comes as a Postgres text[] — Supabase returns it as List<dynamic>
+    final rawUrls = map['attachment_urls'];
+    final urls = rawUrls == null
+        ? <String>[]
+        : (rawUrls as List<dynamic>).cast<String>();
+
     return TaskModel(
       id: map['id'].toString(),
       title: map['title'] as String,
@@ -30,6 +38,7 @@ class TaskModel {
       isCompleted: map['is_completed'] as bool? ?? false,
       category: map['category'] as String? ?? 'Personal',
       createdAt: DateTime.parse(map['created_at'] as String),
+      attachmentUrls: urls,
     );
   }
 
@@ -40,6 +49,7 @@ class TaskModel {
       'scheduled_at': scheduledAt?.toIso8601String(),
       'is_completed': isCompleted,
       'category': category,
+      'attachment_urls': attachmentUrls,
     };
   }
 
@@ -52,6 +62,7 @@ class TaskModel {
       isCompleted: isCompleted,
       category: category,
       createdAt: createdAt,
+      attachmentUrls: attachmentUrls,
     );
   }
 
@@ -64,6 +75,7 @@ class TaskModel {
       isCompleted: task.isCompleted,
       category: task.category,
       createdAt: task.createdAt,
+      attachmentUrls: task.attachmentUrls,
     );
   }
 }

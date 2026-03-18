@@ -4,6 +4,7 @@ import '../../domain/models/task.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/category_chip.dart';
+import '../widgets/file_attachment_widget.dart';
 import '../widgets/primary_button.dart';
 
 class AddTaskScreen extends StatefulWidget {
@@ -21,15 +22,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   DateTime? _selectedDate;
   String _selectedCategory = 'Personal';
   bool _isLoading = false;
+  bool _isUploading = false;
+
+  final List<PendingFile> _pendingFiles = [];
 
   static const List<String> _categories = [
-    'Healthy',
-    'Design',
-    'Job',
-    'Education',
-    'Sport',
-    'Personal',
-    'More',
+    'Healthy', 'Design', 'Job', 'Education', 'Sport', 'Personal', 'More',
   ];
 
   @override
@@ -39,6 +37,68 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     super.dispose();
   }
 
+  Future<void> _handlePickImage() async {
+    final source = await _showImageSourceSheet();
+    if (source == null) return;
+    List<PendingFile> picked;
+    if (source == 'camera') {
+      final f = await pickFromCamera();
+      picked = f != null ? [f] : [];
+    } else {
+      picked = await pickImages();
+    }
+    if (picked.isEmpty) return;
+    setState(() => _pendingFiles.addAll(picked));
+  }
+
+  Future<String?> _showImageSourceSheet() async {
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _PickerOption(
+                icon: Icons.photo_library_rounded,
+                label: 'Galería de fotos',
+                subtitle: 'Selecciona una o más imágenes',
+                onTap: () => Navigator.pop(context, 'gallery'),
+              ),
+              _PickerOption(
+                icon: Icons.camera_alt_rounded,
+                label: 'Tomar foto',
+                subtitle: 'Usa la cámara ahora',
+                onTap: () => Navigator.pop(context, 'camera'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handlePickFile() async {
+    final picked = await pickGenericFiles();
+    if (picked.isEmpty) return;
+    setState(() => _pendingFiles.addAll(picked));
+  }
+
+  void _removeFile(int index) => setState(() => _pendingFiles.removeAt(index));
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final date = await showDatePicker(
@@ -46,44 +106,32 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       initialDate: _selectedDate ?? now,
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now.add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-            ),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary, onPrimary: Colors.white, surface: Colors.white,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
     if (date == null) return;
-
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_selectedDate ?? now),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-            ),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary, onPrimary: Colors.white,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
-
     setState(() {
       _selectedDate = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time?.hour ?? 0,
-        time?.minute ?? 0,
+        date.year, date.month, date.day,
+        time?.hour ?? 0, time?.minute ?? 0,
       );
     });
   }
@@ -91,74 +139,68 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   String _formatSelectedDate() {
     if (_selectedDate == null) return 'Select Date In Calendar';
     final d = _selectedDate!;
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     final hour = d.hour;
     final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour =
-    hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     final min = d.minute.toString().padLeft(2, '0');
     return '${d.day} ${months[d.month - 1]} ${d.year}  ·  $displayHour:$min $period';
   }
 
   Future<void> _confirm() async {
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('El título es obligatorio'),
-          backgroundColor: AppColors.danger,
-          behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      _showSnack('El título es obligatorio', isError: true);
       return;
     }
-
     setState(() => _isLoading = true);
-
     try {
+      final taskId = const Uuid().v4();
+      final List<String> uploadedUrls = [];
+
+      if (_pendingFiles.isNotEmpty) {
+        setState(() => _isUploading = true);
+        for (final pending in _pendingFiles) {
+          final url = await widget.taskRepository.uploadFile(
+            taskId: taskId, file: pending.file,
+          );
+          uploadedUrls.add(url);
+        }
+        setState(() => _isUploading = false);
+      }
+
       final task = Task(
-        id: const Uuid().v4(),
+        id: taskId,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
+            ? null : _descriptionController.text.trim(),
         scheduledAt: _selectedDate,
         isCompleted: false,
         category: _selectedCategory,
         createdAt: DateTime.now(),
+        attachmentUrls: uploadedUrls,
       );
 
       await widget.taskRepository.createTask(task);
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Tarea agregada con éxito'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        _showSnack('Tarea agregada con éxito');
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        setState(() => _isLoading = false);
+        _showSnack('Error: $e', isError: true);
+        setState(() { _isLoading = false; _isUploading = false; });
       }
     }
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? AppColors.danger : AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: Duration(seconds: isError ? 3 : 2),
+    ));
   }
 
   @override
@@ -170,10 +212,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Adding Task',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        title: Text('Adding Task', style: Theme.of(context).textTheme.titleLarge),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -184,15 +223,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title field
-              _InputField(
-                controller: _titleController,
-                hint: 'Task Title',
-                maxLines: 1,
-              ),
+              _InputField(controller: _titleController, hint: 'Task Title', maxLines: 1),
               const SizedBox(height: 12),
-
-              // Description field
               _InputField(
                 controller: _descriptionController,
                 hint: 'Description',
@@ -200,8 +232,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 maxLines: 4,
               ),
               const SizedBox(height: 16),
-
-              // Date picker row
               _ActionRow(
                 icon: Icons.calendar_month_rounded,
                 label: _formatSelectedDate(),
@@ -210,48 +240,33 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Additional files (decorative / future feature)
-              _ActionRow(
-                icon: Icons.add_circle_outline_rounded,
-                label: 'Additional Files',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                          'Próximamente: adjuntar archivos a la tarea'),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                },
+              // ── Real file attachment ──
+              FileAttachmentWidget(
+                pendingFiles: _pendingFiles,
+                isUploading: _isUploading,
+                onPickImage: _handlePickImage,
+                onPickFile: _handlePickFile,
+                onRemove: _removeFile,
               ),
-              const SizedBox(height: 24),
 
-              // Category
+              const SizedBox(height: 24),
               Text(
                 'Choose Category',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _categories.map((cat) {
-                  return CategoryChip(
-                    label: cat,
-                    isSelected: _selectedCategory == cat,
-                    onTap: () => setState(() => _selectedCategory = cat),
-                  );
-                }).toList(),
+                children: _categories.map((cat) => CategoryChip(
+                  label: cat,
+                  isSelected: _selectedCategory == cat,
+                  onTap: () => setState(() => _selectedCategory = cat),
+                )).toList(),
               ),
               const SizedBox(height: 36),
-
               PrimaryButton(
-                text: 'Confirm Adding',
+                text: _isUploading ? 'Subiendo archivos...' : 'Confirm Adding',
                 onPressed: _confirm,
                 isLoading: _isLoading,
               ),
@@ -270,12 +285,7 @@ class _InputField extends StatelessWidget {
   final String? trailingLabel;
   final int maxLines;
 
-  const _InputField({
-    required this.controller,
-    required this.hint,
-    this.trailingLabel,
-    this.maxLines = 1,
-  });
+  const _InputField({required this.controller, required this.hint, this.trailingLabel, this.maxLines = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -295,9 +305,7 @@ class _InputField extends StatelessWidget {
               maxLines: maxLines,
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textHint,
-                ),
+                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textHint),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -309,10 +317,7 @@ class _InputField extends StatelessWidget {
               padding: const EdgeInsets.only(top: 14),
               child: Text(
                 trailingLabel!,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.textHint,
-                  fontSize: 11,
-                ),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textHint, fontSize: 11),
               ),
             ),
           ]
@@ -328,12 +333,7 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onTap;
   final bool hasSelection;
 
-  const _ActionRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.hasSelection = false,
-  });
+  const _ActionRow({required this.icon, required this.label, required this.onTap, this.hasSelection = false});
 
   @override
   Widget build(BuildContext context) {
@@ -341,10 +341,7 @@ class _ActionRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primaryExtraLight,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: AppColors.primaryExtraLight, borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
             Icon(icon, color: AppColors.primary, size: 22),
@@ -353,18 +350,38 @@ class _ActionRow extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: hasSelection
-                      ? AppColors.textPrimary
-                      : AppColors.primary,
+                  color: hasSelection ? AppColors.textPrimary : AppColors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.primary, size: 22),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 22),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PickerOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _PickerOption({required this.icon, required this.label, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 42, height: 42,
+        decoration: BoxDecoration(color: AppColors.primaryExtraLight, borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: AppColors.primary, size: 22),
+      ),
+      title: Text(label, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary)),
+      onTap: onTap,
     );
   }
 }

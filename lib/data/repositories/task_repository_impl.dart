@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../domain/models/task.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
@@ -51,5 +52,21 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<List<Map<String, dynamic>>> getDailyCompletionStats(
       {int days = 7}) async {
     return _remoteDataSource.getDailyCompletionStats(days: days);
+  }
+
+  @override
+  Future<String> uploadFile({
+    required String taskId,
+    required File file,
+  }) async {
+    return _remoteDataSource.uploadFile(taskId: taskId, file: file);
+  }
+
+  @override
+  Future<void> deleteFile({
+    required String taskId,
+    required String fileUrl,
+  }) async {
+    await _remoteDataSource.deleteFile(taskId: taskId, fileUrl: fileUrl);
   }
 }

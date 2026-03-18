@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:mime/mime.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/task_model.dart';
 
@@ -7,9 +9,9 @@ class TaskRemoteDataSource {
   final SupabaseClient _client;
 
   static const String _table = 'tasks';
+  static const String _bucket = 'task-attachments';
 
   Future<List<TaskModel>> getTasks() async {
-    // Use indexed column (created_at) for ordering — avoids full seq scan
     final List<dynamic> response = await _client
         .from(_table)
         .select('*')
@@ -26,7 +28,6 @@ class TaskRemoteDataSource {
     final end =
     DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
 
-    // Filtered on indexed scheduled_at column
     final List<dynamic> response = await _client
         .from(_table)
         .select('*')
@@ -45,7 +46,6 @@ class TaskRemoteDataSource {
   }
 
   Future<void> updateTask(TaskModel model) async {
-    // Update only changed columns, not SELECT * — minimal data transfer
     await _client.from(_table).update(model.toMap()).eq('id', model.id);
   }
 
@@ -54,7 +54,6 @@ class TaskRemoteDataSource {
   }
 
   Future<void> toggleTaskCompletion(String id, bool isCompleted) async {
-    // Partial update — single column, no full row rewrite
     await _client
         .from(_table)
         .update({'is_completed': isCompleted}).eq('id', id);
@@ -96,11 +95,11 @@ class TaskRemoteDataSource {
         .gte('created_at', rangeStart)
         .order('created_at', ascending: true);
 
-    // Group by day in Dart (avoids complex Postgres RPC for now)
     final Map<String, Map<String, int>> grouped = {};
     for (var row in response) {
       final dt = DateTime.parse(row['created_at'] as String);
-      final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      final key =
+          '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
       grouped.putIfAbsent(key, () => {'total': 0, 'completed': 0});
       grouped[key]!['total'] = grouped[key]!['total']! + 1;
       if (row['is_completed'] == true) {
@@ -111,5 +110,36 @@ class TaskRemoteDataSource {
     return grouped.entries
         .map((e) => {'date': e.key, ...e.value})
         .toList();
+  }
+
+  /// Uploads a file to Supabase Storage and returns its public URL.
+  /// Path: task-attachments/{taskId}/{fileName}
+  Future<String> uploadFile({
+    required String taskId,
+    required File file,
+  }) async {
+    final fileName = file.path.split('/').last;
+    final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+    final storagePath = '$taskId/$fileName';
+
+    await _client.storage.from(_bucket).upload(
+      storagePath,
+      file,
+      fileOptions: FileOptions(contentType: mimeType, upsert: true),
+    );
+
+    final publicUrl =
+    _client.storage.from(_bucket).getPublicUrl(storagePath);
+    return publicUrl;
+  }
+
+  /// Deletes a file from Storage given its full public URL.
+  Future<void> deleteFile({
+    required String taskId,
+    required String fileUrl,
+  }) async {
+    final fileName = Uri.parse(fileUrl).pathSegments.last;
+    final storagePath = '$taskId/$fileName';
+    await _client.storage.from(_bucket).remove([storagePath]);
   }
 }
