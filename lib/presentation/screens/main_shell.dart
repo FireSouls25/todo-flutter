@@ -36,11 +36,11 @@ class _MainShellState extends State<MainShell> {
         taskRepository: widget.taskRepository,
         homeKey: _homeKey,
       ),
-      AnalyticsScreen(taskRepository: widget.taskRepository),
       NotesScreen(
         taskRepository: widget.noteRepository,
         noteRepository: widget.noteRepository,
       ),
+      AnalyticsScreen(taskRepository: widget.taskRepository),
     ];
   }
 
@@ -72,12 +72,12 @@ class _MainShellState extends State<MainShell> {
               onTap: () => setState(() => _currentIndex = 0),
             ),
             _NavItem(
-              icon: Icons.pie_chart_outline_rounded,
+              icon: Icons.description_outlined,
               isSelected: _currentIndex == 1,
               onTap: () => setState(() => _currentIndex = 1),
             ),
             _NavItem(
-              icon: Icons.description_outlined,
+              icon: Icons.pie_chart_outline_rounded,
               isSelected: _currentIndex == 2,
               onTap: () => setState(() => _currentIndex = 2),
             ),
