@@ -24,20 +24,26 @@ class TaskRemoteDataSource {
   }
 
   Future<List<TaskModel>> getTasksByDate(DateTime date) async {
-    final start = DateTime(date.year, date.month, date.day).toIso8601String();
-    final end =
-        DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+    final startUtc = DateTime.utc(date.year, date.month, date.day);
+    final endUtc = DateTime.utc(date.year, date.month, date.day, 23, 59, 59);
 
     final List<dynamic> response = await _client
         .from(_table)
         .select('*')
-        .or('and(scheduled_at.gte.$start,scheduled_at.lte.$end),and(scheduled_at.is.null,created_at.gte.$start,created_at.lte.$end))')
-        .order('scheduled_at', ascending: true, nullsFirst: false);
+        .order('scheduled_at', ascending: true, nullsFirst: false)
+        .order('created_at', ascending: false);
 
     return response
         .cast<Map<String, dynamic>>()
         .map(TaskModel.fromMap)
-        .toList();
+        .where((task) {
+      if (task.scheduledAt != null) {
+        final utc = task.scheduledAt!.toUtc();
+        return !utc.isBefore(startUtc) && !utc.isAfter(endUtc);
+      }
+      final createdUtc = task.createdAt.toUtc();
+      return !createdUtc.isBefore(startUtc) && !createdUtc.isAfter(endUtc);
+    }).toList();
   }
 
   Future<void> createTask(TaskModel model) async {
