@@ -18,16 +18,14 @@ class PendingFile {
 class FileAttachmentWidget extends StatelessWidget {
   final List<PendingFile> pendingFiles;
   final bool isUploading;
-  final VoidCallback onPickImage;
-  final VoidCallback onPickFile;
+  final void Function(String source) onPick;
   final void Function(int index) onRemove;
 
   const FileAttachmentWidget({
     super.key,
     required this.pendingFiles,
     required this.isUploading,
-    required this.onPickImage,
-    required this.onPickFile,
+    required this.onPick,
     required this.onRemove,
   });
 
@@ -53,35 +51,35 @@ class FileAttachmentWidget extends StatelessWidget {
                 Expanded(
                   child: isUploading
                       ? Row(
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Subiendo archivo...',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: AppColors.primary),
-                      ),
-                    ],
-                  )
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Subiendo archivo...',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: AppColors.primary),
+                            ),
+                          ],
+                        )
                       : Text(
-                    pendingFiles.isEmpty
-                        ? 'Additional Files'
-                        : '${pendingFiles.length} archivo(s) seleccionado(s)',
-                    style:
-                    Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                          pendingFiles.isEmpty
+                              ? 'Additional Files'
+                              : '${pendingFiles.length} archivo(s) seleccionado(s)',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                        ),
                 ),
                 const Icon(Icons.chevron_right_rounded,
                     color: AppColors.primary, size: 22),
@@ -138,7 +136,7 @@ class FileAttachmentWidget extends StatelessWidget {
                 subtitle: 'Selecciona imágenes existentes',
                 onTap: () {
                   Navigator.pop(context);
-                  onPickImage();
+                  onPick('gallery');
                 },
               ),
               _PickerOption(
@@ -147,8 +145,7 @@ class FileAttachmentWidget extends StatelessWidget {
                 subtitle: 'Usa la cámara ahora',
                 onTap: () {
                   Navigator.pop(context);
-                  // camera is handled inside onPickImage via source toggle
-                  onPickImage();
+                  onPick('camera');
                 },
               ),
               _PickerOption(
@@ -157,7 +154,7 @@ class FileAttachmentWidget extends StatelessWidget {
                 subtitle: 'PDF, Word, Excel, etc.',
                 onTap: () {
                   Navigator.pop(context);
-                  onPickFile();
+                  onPick('file');
                 },
               ),
               const SizedBox(height: 8),
@@ -235,17 +232,16 @@ class _FileChip extends StatelessWidget {
                   color: AppColors.primaryExtraLight,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child:
-                Icon(_icon, color: AppColors.primary, size: 18),
+                child: Icon(_icon, color: AppColors.primary, size: 18),
               ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 file.name,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontSize: 11,
-                  color: AppColors.textPrimary,
-                ),
+                      fontSize: 11,
+                      color: AppColors.textPrimary,
+                    ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -345,7 +341,7 @@ Future<List<PendingFile>> pickImages() async {
 
 Future<PendingFile?> pickFromCamera() async {
   final image =
-  await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
   if (image == null) return null;
   final name = image.path.split('/').last;
   return PendingFile(file: File(image.path), name: name, isImage: true);
@@ -357,14 +353,9 @@ Future<List<PendingFile>> pickGenericFiles() async {
     type: FileType.any,
   );
   if (result == null) return [];
-  return result.files
-      .where((f) => f.path != null)
-      .map((f) {
+  return result.files.where((f) => f.path != null).map((f) {
     final ext = f.extension?.toLowerCase() ?? '';
-    final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic']
-        .contains(ext);
-    return PendingFile(
-        file: File(f.path!), name: f.name, isImage: isImage);
-  })
-      .toList();
+    final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].contains(ext);
+    return PendingFile(file: File(f.path!), name: f.name, isImage: isImage);
+  }).toList();
 }

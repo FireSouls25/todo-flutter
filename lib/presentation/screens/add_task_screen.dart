@@ -27,7 +27,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final List<PendingFile> _pendingFiles = [];
 
   static const List<String> _categories = [
-    'Healthy', 'Design', 'Job', 'Education', 'Sport', 'Personal', 'More',
+    'Healthy',
+    'Design',
+    'Job',
+    'Education',
+    'Sport',
+    'Personal',
+    'More',
   ];
 
   @override
@@ -37,62 +43,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     super.dispose();
   }
 
-  Future<void> _handlePickImage() async {
-    final source = await _showImageSourceSheet();
-    if (source == null) return;
+  Future<void> _handlePick(String source) async {
     List<PendingFile> picked;
     if (source == 'camera') {
       final f = await pickFromCamera();
       picked = f != null ? [f] : [];
+    } else if (source == 'file') {
+      picked = await pickGenericFiles();
     } else {
       picked = await pickImages();
     }
-    if (picked.isEmpty) return;
-    setState(() => _pendingFiles.addAll(picked));
-  }
-
-  Future<String?> _showImageSourceSheet() async {
-    return showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _PickerOption(
-                icon: Icons.photo_library_rounded,
-                label: 'Galería de fotos',
-                subtitle: 'Selecciona una o más imágenes',
-                onTap: () => Navigator.pop(context, 'gallery'),
-              ),
-              _PickerOption(
-                icon: Icons.camera_alt_rounded,
-                label: 'Tomar foto',
-                subtitle: 'Usa la cámara ahora',
-                onTap: () => Navigator.pop(context, 'camera'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handlePickFile() async {
-    final picked = await pickGenericFiles();
     if (picked.isEmpty) return;
     setState(() => _pendingFiles.addAll(picked));
   }
@@ -109,7 +69,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: AppColors.primary, onPrimary: Colors.white, surface: Colors.white,
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            surface: Colors.white,
           ),
         ),
         child: child!,
@@ -122,7 +84,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: AppColors.primary, onPrimary: Colors.white,
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
           ),
         ),
         child: child!,
@@ -130,8 +93,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
     setState(() {
       _selectedDate = DateTime(
-        date.year, date.month, date.day,
-        time?.hour ?? 0, time?.minute ?? 0,
+        date.year,
+        date.month,
+        date.day,
+        time?.hour ?? 0,
+        time?.minute ?? 0,
       );
     });
   }
@@ -139,7 +105,20 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   String _formatSelectedDate() {
     if (_selectedDate == null) return 'Select Date In Calendar';
     final d = _selectedDate!;
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final hour = d.hour;
     final period = hour >= 12 ? 'PM' : 'AM';
     final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
@@ -161,7 +140,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         setState(() => _isUploading = true);
         for (final pending in _pendingFiles) {
           final url = await widget.taskRepository.uploadFile(
-            taskId: taskId, file: pending.file,
+            taskId: taskId,
+            file: pending.file,
           );
           uploadedUrls.add(url);
         }
@@ -172,7 +152,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         id: taskId,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
-            ? null : _descriptionController.text.trim(),
+            ? null
+            : _descriptionController.text.trim(),
         scheduledAt: _selectedDate,
         isCompleted: false,
         category: _selectedCategory,
@@ -188,7 +169,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     } catch (e) {
       if (mounted) {
         _showSnack('Error: $e', isError: true);
-        setState(() { _isLoading = false; _isUploading = false; });
+        setState(() {
+          _isLoading = false;
+          _isUploading = false;
+        });
       }
     }
   }
@@ -212,7 +196,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Adding Task', style: Theme.of(context).textTheme.titleLarge),
+        title:
+            Text('Adding Task', style: Theme.of(context).textTheme.titleLarge),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -223,7 +208,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _InputField(controller: _titleController, hint: 'Task Title', maxLines: 1),
+              _InputField(
+                  controller: _titleController,
+                  hint: 'Task Title',
+                  maxLines: 1),
               const SizedBox(height: 12),
               _InputField(
                 controller: _descriptionController,
@@ -244,25 +232,29 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               FileAttachmentWidget(
                 pendingFiles: _pendingFiles,
                 isUploading: _isUploading,
-                onPickImage: _handlePickImage,
-                onPickFile: _handlePickFile,
+                onPick: _handlePick,
                 onRemove: _removeFile,
               ),
 
               const SizedBox(height: 24),
               Text(
                 'Choose Category',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _categories.map((cat) => CategoryChip(
-                  label: cat,
-                  isSelected: _selectedCategory == cat,
-                  onTap: () => setState(() => _selectedCategory = cat),
-                )).toList(),
+                children: _categories
+                    .map((cat) => CategoryChip(
+                          label: cat,
+                          isSelected: _selectedCategory == cat,
+                          onTap: () => setState(() => _selectedCategory = cat),
+                        ))
+                    .toList(),
               ),
               const SizedBox(height: 36),
               PrimaryButton(
@@ -285,7 +277,11 @@ class _InputField extends StatelessWidget {
   final String? trailingLabel;
   final int maxLines;
 
-  const _InputField({required this.controller, required this.hint, this.trailingLabel, this.maxLines = 1});
+  const _InputField(
+      {required this.controller,
+      required this.hint,
+      this.trailingLabel,
+      this.maxLines = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +301,10 @@ class _InputField extends StatelessWidget {
               maxLines: maxLines,
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textHint),
+                hintStyle: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: AppColors.textHint),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -317,7 +316,10 @@ class _InputField extends StatelessWidget {
               padding: const EdgeInsets.only(top: 14),
               child: Text(
                 trailingLabel!,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textHint, fontSize: 11),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: AppColors.textHint, fontSize: 11),
               ),
             ),
           ]
@@ -333,7 +335,11 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onTap;
   final bool hasSelection;
 
-  const _ActionRow({required this.icon, required this.label, required this.onTap, this.hasSelection = false});
+  const _ActionRow(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.hasSelection = false});
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +347,9 @@ class _ActionRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: AppColors.primaryExtraLight, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+            color: AppColors.primaryExtraLight,
+            borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
             Icon(icon, color: AppColors.primary, size: 22),
@@ -350,38 +358,18 @@ class _ActionRow extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: hasSelection ? AppColors.textPrimary : AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
+                      color: hasSelection
+                          ? AppColors.textPrimary
+                          : AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 22),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.primary, size: 22),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PickerOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _PickerOption({required this.icon, required this.label, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 42, height: 42,
-        decoration: BoxDecoration(color: AppColors.primaryExtraLight, borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: AppColors.primary, size: 22),
-      ),
-      title: Text(label, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary)),
-      onTap: onTap,
     );
   }
 }
