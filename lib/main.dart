@@ -3,9 +3,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/environment.dart';
 import 'core/supabase/supabase_client_provider.dart';
 import 'data/datasources/task_remote_data_source.dart';
+import 'data/datasources/note_remote_data_source.dart';
 import 'data/repositories/task_repository_impl.dart';
+import 'data/repositories/note_repository_impl.dart';
 import 'domain/repositories/task_repository.dart';
-import 'presentation/screens/home_screen.dart';
+import 'domain/repositories/note_repository.dart';
+import 'presentation/screens/main_shell.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -31,16 +34,21 @@ class TaskApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remoteDataSource =
-    TaskRemoteDataSource(SupabaseClientProvider.instance.client);
+    final taskRemoteDataSource =
+        TaskRemoteDataSource(SupabaseClientProvider.instance.client);
+    final noteRemoteDataSource =
+        NoteRemoteDataSource(SupabaseClientProvider.instance.client);
     final TaskRepository taskRepository =
-    TaskRepositoryImpl(remoteDataSource);
+        TaskRepositoryImpl(taskRemoteDataSource);
+    final NoteRepository noteRepository =
+        NoteRepositoryImpl(noteRemoteDataSource);
 
     return MaterialApp(
       title: 'Task Manager',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: HomeScreen(taskRepository: taskRepository),
+      home: MainShell(
+          taskRepository: taskRepository, noteRepository: noteRepository),
     );
   }
 }

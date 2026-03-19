@@ -4,34 +4,35 @@ import '../../domain/repositories/task_repository.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/circular_progress_widget.dart';
 import '../widgets/task_card.dart';
-import 'add_task_screen.dart';
-import 'analytics_screen.dart';
-import 'notes_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.taskRepository});
+class HomeScreenContent extends StatefulWidget {
+  const HomeScreenContent({
+    super.key,
+    required this.taskRepository,
+    required this.homeKey,
+  });
 
   final TaskRepository taskRepository;
+  final GlobalKey<HomeScreenContentState> homeKey;
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreenContent> createState() => HomeScreenContentState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenContentState extends State<HomeScreenContent> {
   List<Task> _todayTasks = [];
   int _weeklyTotal = 0;
   int _weeklyCompleted = 0;
   int _weeklyPercentage = 0;
   bool _isLoading = true;
-  int _currentNavIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> loadData() async {
     setState(() => _isLoading = true);
     try {
       final today = DateTime.now();
@@ -54,49 +55,12 @@ class _HomeScreenState extends State<HomeScreen> {
       task.id,
       !task.isCompleted,
     );
-    await _loadData();
+    await loadData();
   }
 
   Future<void> _deleteTask(String id) async {
     await widget.taskRepository.deleteTask(id);
-    await _loadData();
-  }
-
-  void _openAddTask() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddTaskScreen(taskRepository: widget.taskRepository),
-      ),
-    );
-    if (result == true) _loadData();
-  }
-
-  void _onNavTap(int index) {
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              AnalyticsScreen(taskRepository: widget.taskRepository),
-        ),
-      );
-      return;
-    }
-    if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NotesScreen(taskRepository: widget.taskRepository),
-        ),
-      );
-      return;
-    }
-    if (index == 3) {
-      _openAddTask();
-      return;
-    }
-    setState(() => _currentNavIndex = index);
+    await loadData();
   }
 
   int get _completedCount => _todayTasks.where((t) => t.isCompleted).length;
@@ -108,76 +72,72 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(
-            child: CircularProgressIndicator(color: AppColors.primary))
+                child: CircularProgressIndicator(color: AppColors.primary))
             : RefreshIndicator(
-          onRefresh: _loadData,
-          color: AppColors.primary,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildWeeklyCard()),
-              SliverToBoxAdapter(child: _buildTodayHeader()),
-              SliverToBoxAdapter(child: _buildProgressBar()),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              if (_todayTasks.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle_outline,
-                            size: 56,
-                            color: AppColors.primary.withValues(
-                                alpha: 0.4)),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No hay tareas para hoy',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
-                              ?.copyWith(
-                              color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Pulsa + para agregar una',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                              color: AppColors.textHint),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                        final task = _todayTasks[index];
-                        return Padding(
-                          padding:
-                          const EdgeInsets.only(bottom: 10),
-                          child: TaskCard(
-                            task: task,
-                            onToggle: () => _toggleTask(task),
-                            onDelete: () => _deleteTask(task.id),
+                onRefresh: loadData,
+                color: AppColors.primary,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: _buildWeeklyCard()),
+                    SliverToBoxAdapter(child: _buildTodayHeader()),
+                    SliverToBoxAdapter(child: _buildProgressBar()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    if (_todayTasks.isEmpty)
+                      SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline,
+                                  size: 56,
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.4)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No hay tareas para hoy',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Pulsa + para agregar una',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: AppColors.textHint),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      childCount: _todayTasks.length,
-                    ),
-                  ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final task = _todayTasks[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: TaskCard(
+                                  task: task,
+                                  onToggle: () => _toggleTask(task),
+                                  onDelete: () => _deleteTask(task.id),
+                                ),
+                              );
+                            },
+                            childCount: _todayTasks.length,
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
-          ),
-        ),
+              ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -213,10 +173,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'Weekly Tasks',
                         style:
-                        Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
                       ),
                       const SizedBox(width: 6),
                       const Icon(Icons.arrow_forward,
@@ -255,16 +215,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Today Tasks',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
           ),
           Text(
             '$_completedCount of ${_todayTasks.length}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
         ],
       ),
@@ -273,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProgressBar() {
     final progress =
-    _todayTasks.isEmpty ? 0.0 : _completedCount / _todayTasks.length;
+        _todayTasks.isEmpty ? 0.0 : _completedCount / _todayTasks.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
       child: ClipRRect(
@@ -282,46 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
           value: progress,
           minHeight: 8,
           backgroundColor: AppColors.progressTrack,
-          valueColor:
-          const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      height: 72,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(
-            icon: Icons.home_rounded,
-            isSelected: _currentNavIndex == 0,
-            onTap: () => _onNavTap(0),
-          ),
-          _NavItem(
-            icon: Icons.insert_chart_outlined_rounded,
-            isSelected: false,
-            onTap: () => _onNavTap(1),
-          ),
-          _NavItem(
-            icon: Icons.description_outlined,
-            isSelected: false,
-            onTap: () => _onNavTap(2),
-          ),
-          _AddButton(onTap: _openAddTask),
-        ],
       ),
     );
   }
@@ -344,67 +266,10 @@ class _StatBadge extends StatelessWidget {
       child: Text(
         value,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isSelected ? AppColors.primary : AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _AddButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
             ),
-          ],
-        ),
-        child: const Icon(Icons.add, color: Colors.white, size: 26),
       ),
     );
   }

@@ -26,14 +26,13 @@ class TaskRemoteDataSource {
   Future<List<TaskModel>> getTasksByDate(DateTime date) async {
     final start = DateTime(date.year, date.month, date.day).toIso8601String();
     final end =
-    DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+        DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
 
     final List<dynamic> response = await _client
         .from(_table)
         .select('*')
-        .gte('scheduled_at', start)
-        .lte('scheduled_at', end)
-        .order('scheduled_at', ascending: true);
+        .or('and(scheduled_at.gte.$start,scheduled_at.lte.$end),and(scheduled_at.is.null,created_at.gte.$start,created_at.lte.$end))')
+        .order('scheduled_at', ascending: true, nullsFirst: false);
 
     return response
         .cast<Map<String, dynamic>>()
@@ -61,10 +60,10 @@ class TaskRemoteDataSource {
 
   Future<Map<String, dynamic>> getWeeklyStats() async {
     final now = DateTime.now();
-    final weekStart =
-    DateTime(now.year, now.month, now.day - now.weekday + 1).toIso8601String();
-    final weekEnd = DateTime(now.year, now.month, now.day, 23, 59, 59)
+    final weekStart = DateTime(now.year, now.month, now.day - now.weekday + 1)
         .toIso8601String();
+    final weekEnd =
+        DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
 
     final List<dynamic> response = await _client
         .from(_table)
@@ -87,7 +86,7 @@ class TaskRemoteDataSource {
       {int days = 7}) async {
     final now = DateTime.now();
     final rangeStart =
-    DateTime(now.year, now.month, now.day - (days - 1)).toIso8601String();
+        DateTime(now.year, now.month, now.day - (days - 1)).toIso8601String();
 
     final List<dynamic> response = await _client
         .from(_table)
@@ -107,9 +106,7 @@ class TaskRemoteDataSource {
       }
     }
 
-    return grouped.entries
-        .map((e) => {'date': e.key, ...e.value})
-        .toList();
+    return grouped.entries.map((e) => {'date': e.key, ...e.value}).toList();
   }
 
   /// Uploads a file to Supabase Storage and returns its public URL.
@@ -123,13 +120,12 @@ class TaskRemoteDataSource {
     final storagePath = '$taskId/$fileName';
 
     await _client.storage.from(_bucket).upload(
-      storagePath,
-      file,
-      fileOptions: FileOptions(contentType: mimeType, upsert: true),
-    );
+          storagePath,
+          file,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
 
-    final publicUrl =
-    _client.storage.from(_bucket).getPublicUrl(storagePath);
+    final publicUrl = _client.storage.from(_bucket).getPublicUrl(storagePath);
     return publicUrl;
   }
 
